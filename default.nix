@@ -19,12 +19,6 @@ let
 
     acl all src all
 
-    acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
-    acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
-    acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
-    acl localnet src fc00::/7       # RFC 4193 local private network range
-    acl localnet src fe80::/10      # RFC 4291 link-local (directly plugged) machines
-
     acl SSL_ports port 443
     acl Safe_ports port 80		# http
     acl Safe_ports port 21		# ftp
@@ -41,12 +35,7 @@ let
     http_access deny !Safe_ports
     http_access deny CONNECT !SSL_ports
 
-    http_access allow localhost manager
-    http_access deny manager
-
-    http_access allow localnet
     http_access allow localhost
-
     http_access deny all
 
     forwarded_for off
