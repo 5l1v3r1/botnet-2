@@ -4,9 +4,9 @@ import sys
 import shutil
 from urllib.request import urlopen
 
-payload = os.environ['PAYLOAD']
-infection_dir = os.environ['INFECTION_DIR']
-infection_port = os.environ['INFECTION_PORT']
+payload = sys.argv[1]
+infection_dir = sys.argv[2]
+infection_port = sys.argv[3]
 
 pid = os.getpid()
 count = 0
