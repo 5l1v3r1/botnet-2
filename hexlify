@@ -1,4 +1,0 @@
-#!/bin/sh
-while read -n 1 c; do
-    printf '\\x%s' "$(printf $c | od -t x1 | head -n 1 | cut -d ' ' -f 2)"
-done
