@@ -121,6 +121,10 @@ in {
             proxy_set_header X-Forwarded-Host $proxy_netloc;
             proxy_pass "$url";
 
+            expires max;
+            add_header Pragma public;
+            add_header Cache-Control "public";
+
             add_before_body /injection.js;
             addition_types *;
 
