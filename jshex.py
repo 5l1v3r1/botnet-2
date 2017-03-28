@@ -1,4 +1,5 @@
 import sys
+
 sys.stdout.write("eval('")
 for chunk in sys.stdin:
     for c in chunk:

@@ -46,7 +46,7 @@ let
     '';
   };
 
-  injectionRaw = pkgs.writeText "injectionRaw.js" ''
+  injectionRaw = pkgs.writeText "injection-raw.js" ''
     (function(){
       function payload() {
         if (!window.__OWNED__) {
@@ -77,9 +77,7 @@ in {
       callPackage <nixpkgs/pkgs/servers/http/nginx/stable.nix> {
         modules = [
           nginxModules.rtmp nginxModules.dav nginxModules.moreheaders
-          nginxModules.echo
-          nginxModules.develkit
-          nginxModules.lua
+          nginxModules.echo nginxModules.develkit nginxModules.lua
         ];
       };
     config = ''
