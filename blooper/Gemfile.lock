@@ -1,0 +1,17 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    blooper (1.8)
+      sequel (>= 3.38.0)
+    pg (0.14.1)
+    sequel (4.44.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  blooper (~> 1.8)
+  pg (~> 0.14.0)
+
+BUNDLED WITH
+   1.14.4

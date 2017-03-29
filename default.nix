@@ -1,8 +1,29 @@
-{ ignoreHosts, payloadUrl }:
+{ ignoreHosts, payloadUrl, blooperParams }:
 
 { pkgs, lib, ... }:
 
 let
+
+  blooper = pkgs.callPackage ./blooper {
+    ruby = pkgs.ruby_2_1;
+  };
+
+  # x = pkgs.writeText "x" ''
+  #   ${blooper}/bin/blooper $@ 2> /var/log/squid/wat
+  # '';
+
+  # logger = pkgs.stdenv.mkDerivation {
+  #   name = "logger";
+  #   inherit (pkgs) stdenv;
+  #   builder = pkgs.writeText "builder.sh" ''
+  #     . $stdenv/setup
+  #     mkdir $out
+  #     cp ${x} $out/go
+  #     chmod +x $out/go
+  #   '';
+  # };
+
+  blooperArg = "{" + lib.concatStringsSep "," (lib.mapAttrsToList (k: v: k + ":" + v) blooperParams) + "}";
 
   squidConfig = pkgs.writeText "squid.conf" ''
     http_port 3128
@@ -31,7 +52,10 @@ let
     forwarded_for off
     via off
 
-    access_log daemon:/var/log/squid/access.log squid
+    logformat squid_log time %{%Y-%m-%d_%H:%M:%S%z}tl time_response %tr mac_source %>eui ip_source %>a squid_request_status %Ss http_status_code %03>Hs http_reply_size %<st http_request_method %rm http_request_url %ru user_name %un squid_hier_code %Sh ip_destination %<a http_content_type %mt
+    access_log daemon:${blooperArg} squid_log
+    logfile_daemon ${blooper}/bin/blooper
+
     cache_log /var/log/squid/cache.log squid
     pid_filename /run/squid/pid
     cache_effective_user squid
