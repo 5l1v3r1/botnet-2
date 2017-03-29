@@ -1,4 +1,4 @@
-{ ccNetloc, ccPayloadURL }:
+{ ccHost, ccPayloadURL }:
 
 { pkgs, ... }:
 
@@ -36,7 +36,7 @@ let
     pid_filename /run/squid/pid
     cache_effective_user squid
 
-    url_rewrite_program ${pkgs.python35}/bin/python ${./rewrite.py} ${ccNetloc}
+    url_rewrite_program ${pkgs.python35}/bin/python ${./rewrite.py} ${ccHost}
   '';
 
   injection = pkgs.stdenv.mkDerivation {
@@ -103,27 +103,23 @@ in {
 
           location / {
 
-            set_by_lua_block $proxy_scheme {
-              return ngx.unescape_uri(ngx.var.arg_scheme)
+            set_by_lua_block $proxy_host {
+              return ngx.unescape_uri(ngx.var.arg_host)
             }
-            set_by_lua_block $proxy_netloc {
-              return ngx.unescape_uri(ngx.var.arg_netloc)
+            set_by_lua_block $proxy_url {
+              return ngx.unescape_uri(ngx.var.arg_url)
             }
-            set_by_lua_block $proxy_rest {
-              return ngx.unescape_uri(ngx.var.arg_rest)
-            }
-
-            set $url "$proxy_scheme://$proxy_netloc$proxy_rest";
 
             proxy_redirect off;
             proxy_set_header Accept-Encoding "";
-            proxy_set_header Host $proxy_netloc;
-            proxy_set_header X-Forwarded-Host $proxy_netloc;
-            proxy_pass "$url";
+            proxy_set_header Host $proxy_host;
+            proxy_set_header X-Forwarded-Host $proxy_host;
+            proxy_pass "$proxy_url";
 
             expires max;
-            add_header Pragma public;
-            add_header Cache-Control "public";
+            add_header Pragma "private";
+            add_header Cache-Control "private,max-age=31535990";
+            add_header ETag "";
 
             add_before_body /injection.js;
             addition_types *;

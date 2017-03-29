@@ -5,14 +5,9 @@ ignore = sys.argv[1]
 
 for line in sys.stdin:
     url = line.split(' ')[0]
-    scheme, netloc, path, query, fragment = urlsplit(url)
+    _, netloc, path, _, _ = urlsplit(url)
     if path.endswith('.js') and netloc != ignore:
-        q = {
-            'scheme': scheme,
-            'netloc': netloc,
-            'rest': path + query + fragment,
-            }
-        print('OK rewrite-url=http://127.0.0.1:13337?' + urlencode(q))
+        print('OK rewrite-url=http://127.0.0.1:13337?' + urlencode({'url': url, 'host': netloc}))
     else:
         print('ERR')
     sys.stdout.flush()
