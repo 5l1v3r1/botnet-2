@@ -1,3 +1,16 @@
+# exampleArgs = {
+#   ignoreHosts = [ "my.domain:1337" ];
+#   payloadUrl = "http://my.domain:1337/payload.js";
+#   blooperParams = {
+#     adapter = "postgres";
+#     database = "squid";
+#     username = "squid";
+#     password = "squid";
+#     host = "localhost";
+#     encoding = "utf8";
+#   };
+# }
+
 { ignoreHosts, payloadUrl, blooperParams }:
 
 { pkgs, lib, ... }:
@@ -7,21 +20,6 @@ let
   blooper = pkgs.callPackage ./blooper {
     ruby = pkgs.ruby_2_1;
   };
-
-  # x = pkgs.writeText "x" ''
-  #   ${blooper}/bin/blooper $@ 2> /var/log/squid/wat
-  # '';
-
-  # logger = pkgs.stdenv.mkDerivation {
-  #   name = "logger";
-  #   inherit (pkgs) stdenv;
-  #   builder = pkgs.writeText "builder.sh" ''
-  #     . $stdenv/setup
-  #     mkdir $out
-  #     cp ${x} $out/go
-  #     chmod +x $out/go
-  #   '';
-  # };
 
   blooperArg = "{" + lib.concatStringsSep "," (lib.mapAttrsToList (k: v: k + ":" + v) blooperParams) + "}";
 
