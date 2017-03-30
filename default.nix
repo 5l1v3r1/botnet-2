@@ -1,16 +1,3 @@
-# exampleArgs = {
-#   ignoreHosts = [ "my.domain:1337" ];
-#   payloadUrl = "http://my.domain:1337/payload.js";
-#   blooperParams = {
-#     adapter = "postgres";
-#     database = "squid";
-#     username = "squid";
-#     password = "squid";
-#     host = "localhost";
-#     encoding = "utf8";
-#   };
-# }
-
 {
   blooperParams,
   allowConnect ? false,
