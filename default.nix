@@ -11,7 +11,15 @@
 #   };
 # }
 
-{ ignoreHosts, payloadUrl, blooperParams }:
+{
+  blooperParams,
+  allowConnect ? false,
+  beEvil ? false,
+  ignoreHosts ? null,
+  payloadUrl ? null
+}:
+
+assert beEvil -> (ignoreHosts != null && payloadUrl != null);
 
 { pkgs, lib, ... }:
 
@@ -43,10 +51,12 @@ let
 
     http_access allow all
     http_access deny !Safe_ports
-    http_access deny CONNECT !SSL_ports
+    http_access deny CONNECT ${if allowConnect then "!SSL_ports" else "all"}
 
     forwarded_for off
     via off
+
+    strip_query_terms off
 
     logformat squid_log time %{%Y-%m-%d_%H:%M:%S%z}tl time_response %tr mac_source %>eui ip_source %>a squid_request_status %Ss http_status_code %03>Hs http_reply_size %<st http_request_method %rm http_request_url %ru user_name %un squid_hier_code %Sh ip_destination %<a http_content_type %mt
     access_log daemon:${blooperArg} squid_log
@@ -56,7 +66,9 @@ let
     pid_filename /run/squid/pid
     cache_effective_user squid
 
-    url_rewrite_program ${pkgs.python35}/bin/python ${./rewrite.py} ${lib.concatStringsSep " " ignoreHosts}
+    ${lib.optionalString beEvil ''
+      url_rewrite_program ${pkgs.python35}/bin/python ${./rewrite.py} ${lib.concatStringsSep " " ignoreHosts}
+    ''}
   '';
 
   injection = pkgs.stdenv.mkDerivation {
@@ -86,9 +98,7 @@ let
 
 in {
 
-  networking.firewall.allowedTCPPorts = [
-    80 3128
-  ];
+  networking.firewall.allowedTCPPorts = [ 3128 ] ++ lib.optional beEvil 80;
 
   services.nginx = {
     enable = true;
