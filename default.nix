@@ -41,11 +41,9 @@ let
     acl Safe_ports port 777		# multiling http
     acl CONNECT method CONNECT
 
+    http_access allow all
     http_access deny !Safe_ports
     http_access deny CONNECT !SSL_ports
-
-    http_access allow localhost
-    http_access deny all
 
     forwarded_for off
     via off
