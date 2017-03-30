@@ -105,9 +105,6 @@ in {
           nginxModules.echo nginxModules.develkit nginxModules.lua
         ];
       };
-    eventsConfig = ''
-      worker_connections 1024;
-    '';
     appendHttpConfig = ''
       resolver 8.8.8.8;
       resolver_timeout 5s;
