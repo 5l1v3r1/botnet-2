@@ -54,7 +54,7 @@ let
     cache_effective_user squid
 
     ${lib.optionalString beEvil ''
-      url_rewrite_program ${pkgs.python35}/bin/python ${./rewrite.py} ${lib.concatStringsSep " " ignoreHosts}
+      url_rewrite_program ${pkgs.python35}/bin/python3 ${./rewrite.py} ${lib.concatStringsSep " " ignoreHosts}
     ''}
   '';
 
