@@ -4,7 +4,7 @@
 { pkgs, lib, ... }: {
 
   imports = [
-    (import ./. {
+    (import ./mitm {
       blooperParams = {
         adapter = "postgres";
         database = "squid";
