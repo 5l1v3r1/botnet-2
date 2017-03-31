@@ -55,6 +55,7 @@ let
 
     ${lib.optionalString beEvil ''
       url_rewrite_program ${pkgs.python35}/bin/python3 ${./rewrite.py} ${lib.concatStringsSep " " ignoreHosts}
+      redirect_children 400
     ''}
   '';
 
@@ -161,6 +162,7 @@ in {
       ExecStart = "${pkgs.squid}/bin/squid -f ${squidConfig} -sYC";
       ExecStop = "${pkgs.squid}/bin/squid -f ${squidConfig} -k shutdown";
       ExecReload = "${pkgs.squid}/bin/squid -f ${squidConfig} -k reconfigure";
+      LimitNOFILE = "100000";
     };
 
     preStart = ''
