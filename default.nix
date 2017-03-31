@@ -105,6 +105,7 @@ in {
           nginxModules.echo nginxModules.develkit nginxModules.lua
         ];
       };
+    virtualHosts = {};
     appendHttpConfig = ''
       resolver 8.8.8.8;
       resolver_timeout 5s;
