@@ -4,6 +4,7 @@
 { pkgs, lib, ... }: {
 
   imports = [
+    ./cc
     (import ./mitm {
       blooperParams = {
         adapter = "postgres";
